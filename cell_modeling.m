@@ -60,19 +60,14 @@ clear all; close all; %Clear the screen
 fplot = figure;
 figure(fplot.Number); hold('on');
 set(gca, 'YScale', 'log')
-% [T,Y] = runAfterSteadyState("both",1000); % run the ODE after reaching steady state with cell_wildtype_ODE()
-% for i = 1:2
-%     plot(T,Y(:,i),'-*', 'MarkerIndices', 1) % when plotting, mark the first point with a star
-% end
-% %Don't plot cell growth (Y(:,3)) because it grows exponentially
-% for i = 4:17
-%     plot(T,Y(:,i),'-*', 'MarkerIndices', 1) % when plotting, mark the first point with a star
-% end
-
-Ps = linspace(1,1000,20);
-Yf = varyParameters("both active",39,Ps);
-plot(Ps,Yf(:,3),'-*', 'MarkerIndices', 1) % when plotting, mark the first point with a star
-
+[T,Y] = runAfterSteadyState("both",1000); % run the ODE after reaching steady state with cell_wildtype_ODE()
+for i = 1:2
+    plot(T,Y(:,i),'-*', 'MarkerIndices', 1) % when plotting, mark the first point with a star
+end
+%Don't plot cell growth (Y(:,3)) because it grows exponentially
+for i = 4:17
+    plot(T,Y(:,i),'-*', 'MarkerIndices', 1) % when plotting, mark the first point with a star
+end
 
 
 function [P,Y] = initialize(type)
