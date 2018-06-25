@@ -7,15 +7,14 @@
 % Access as Y(:, #), where # is the number
 % 1 = internalized substrate
 % 2 = cell energy
-% 3 = cell growth
-% 4-7 = mRNAs for transport enzymes, substrate-energy conversion enzymes,  other host proteins, and host ribosomal proteins respectively
-% 8 = host rRNA
-% 9-12 = loaded ribosomes for transport enzymes, substrate-energy conversion enzymes,  other host proteins, and host ribosomal proteins respectively
-% 13-16 = actual proteins for transport enzymes, substrate-energy conversion enzymes,  other host proteins, and host ribosomal proteins respectively
-% 17 = host ribosomes (composed of host rRNA and host ribosomal proteins)
-% 18-20 = circuit mRNA, loaded ribosomes, and proteins respectively
-% 18/21 = 16S rRNA (orthogonal rRNA) (smaller # if "oribo", larger # if "both")
-% 19/22 = orthogonal ribosomes (smaller # if "oribo", larger # if "both")
+% 3-6 = mRNAs for transport enzymes, substrate-energy conversion enzymes,  other host proteins, and host ribosomal proteins respectively
+% 7 = host rRNA
+% 8-11 = loaded ribosomes for transport enzymes, substrate-energy conversion enzymes,  other host proteins, and host ribosomal proteins respectively
+% 12-15 = actual proteins for transport enzymes, substrate-energy conversion enzymes,  other host proteins, and host ribosomal proteins respectively
+% 16 = empty host ribosomes (composed of host rRNA and host ribosomal proteins)
+% 17-19 = circuit mRNA, loaded ribosomes, and proteins respectively
+% 17/20 = 16S rRNA (orthogonal rRNA) (smaller # if "oribo", larger # if "both ...")
+% 18/21 = empty orthogonal ribosomes (smaller # if "oribo", larger # if "both ...")
 
 %% Key to the parameters:
 % Access as P(#), where # is a number
@@ -37,9 +36,10 @@
 % 38 = proteome size
 % 39-43 = max transcription, transcription energy threshold, RNA-ribosome binding, RNA-ribosome unbinding, and length in AA for circuit protein
 % 39-43/44-48 = max transcription, transcription energy threshold, RNA-ribosome binding, RNA-ribosome unbinding, and rRNA decay rate for 16S rRNA
-% for the last one, smaller #s if "oribo", larger #s if "both"
+% for the last one, smaller #s if "oribo", larger #s if "both ..."
 
 %% Key to type:
+% "host" for host only
 % "circuit" for including the circuit
 % "oribo" for including the orthogonal ribosomes
 % "both inactive" for both but with host ribosomes translating the circuit genes
@@ -56,19 +56,25 @@
 
 clear all; close all; %Clear the screen
 
-%% Shows behavior when new circuit/o-ribosomes introduced into bacteria currently at equilibrium
+%% Parameter variation
 fplot = figure;
 figure(fplot.Number); hold('on');
-set(gca, 'YScale', 'log')
-[T,Y] = runAfterSteadyState("both",1000); % run the ODE after reaching steady state with cell_wildtype_ODE()
-for i = 1:2
-    plot(T,Y(:,i),'-*', 'MarkerIndices', 1) % when plotting, mark the first point with a star
-end
-%Don't plot cell growth (Y(:,3)) because it grows exponentially
-for i = 4:17
-    plot(T,Y(:,i),'-*', 'MarkerIndices', 1) % when plotting, mark the first point with a star
-end
+%set(gca, 'XScale', 'log')
+%set(gca, 'YScale', 'log')
+Ps = linspace(0,1000,60);
+ylim([0 inf]);
+Yf = varyParameters("both inactive",3,Ps);
+[P,Y] = initialize("both inactive");
+Yc = Yf(:,19); % calculated values to plot
+plot(Ps,Yc,'-', 'MarkerIndices', 1)
 
+Yf = varyParameters("both active",3,Ps);
+[P,Y] = initialize("both active");
+Yc = Yf(:,19); % calculated values to plot
+plot(Ps,Yc,'-', 'MarkerIndices', 1)
+xlabel('Max nutrient import rate')
+ylabel('Circuit protein production')
+legend('Using host ribosomes', 'Using o-ribosomes')
 
 function [P,Y] = initialize(type)
     %% initialize(type):
@@ -136,7 +142,7 @@ function [P,Y] = initialize(type)
     
     if type == "oribo" % Add orthogonal ribosome constants if necessary
         %% Constants related to orthogonal ribosome genes
-        w_O = 50; % max 16S rRNA genes transcription - selected at random/may vary
+        w_O = 100; % max 16S rRNA genes transcription - selected at random/may vary
         o_O = 4.38; % transcription energy threshold for circuit genes
         b_O = 1; % mRNA-ribosome binding rate
         u_O = 1; % mRNA-ribosome binding rate
@@ -152,7 +158,7 @@ function [P,Y] = initialize(type)
         u_Y = 1; % mRNA-ribosome binding rate
         n_Y = 300; % length of circuit proteins
         %% Constants related to orthogonal ribosome genes
-        w_O = 50; % max 16S rRNA genes transcription - selected at random/may vary
+        w_O = 100; % max 16S rRNA genes transcription - selected at random/may vary
         o_O = 4.38; % transcription energy threshold for circuit genes
         b_O = 1; % mRNA-ribosome binding rate
         u_O = 1; % mRNA-ribosome binding rate
@@ -168,7 +174,7 @@ function [P,Y] = initialize(type)
         u_Y = 1; % mRNA-ribosome binding rate
         n_Y = 300; % length of circuit proteins
         %% Constants related to orthogonal ribosome genes
-        w_O = 50; % max 16S rRNA genes transcription - selected at random/may vary
+        w_O = 100; % max 16S rRNA genes transcription - selected at random/may vary
         o_O = 4.38; % transcription energy threshold for circuit genes
         b_O = 1; % mRNA-ribosome binding rate
         u_O = 1; % mRNA-ribosome binding rate
@@ -176,10 +182,9 @@ function [P,Y] = initialize(type)
         P = [P;w_Y;o_Y;b_Y;u_Y;n_Y;w_O;o_O;b_O;u_O;d_O];
     end
     
-    %% Variables related to energy/growth
+    %% Variables related to energy
     s_i = 1000; % internalized substrate
     E_cell = 1000; % cellular energy
-    N_cell = 1; % total growth (exponential dependence on lambda)
 
     %% Variables related to mRNAs
     m_T = 10; % mRNAs for substrate transport enzymes
@@ -200,7 +205,7 @@ function [P,Y] = initialize(type)
     R_h = 10; % functional host ribosomes
    
     %% Package all variables into a single array to use matlab stiff differential equation solver (ode15s)
-    Y = [s_i; E_cell; N_cell; m_T; m_E; m_H; m_R; r_R; c_T; c_E; c_H; c_R; p_T; p_E; p_H; p_R; R_h];
+    Y = [s_i; E_cell; m_T; m_E; m_H; m_R; r_R; c_T; c_E; c_H; c_R; p_T; p_E; p_H; p_R; R_h];
     
     if type == "circuit" % Add circuit variables if necessary
         %% Variables for circuit genes
@@ -252,9 +257,9 @@ function dY = cell_wildtype_ODE(T,Y,P)
     n_H=P(34);n_R=P(35);gamma_max=P(36);k_gamma=P(37);M_proteome=P(38);
     
     %% Unpack current variables from Y
-    s_i = Y(1); E_cell = Y(2); N_cell = Y(3); m_T = Y(4); m_E = Y(5); m_H = Y(6);
-    m_R = Y(7); r_R = Y(8); c_T = Y(9); c_E = Y(10); c_H = Y(11); c_R = Y(12); 
-    p_T = Y(13); p_E = Y(14); p_H = Y(15); p_R = Y(16); R_h = Y(17);
+    s_i = Y(1); E_cell = Y(2); m_T = Y(3); m_E = Y(4); m_H = Y(5);
+    m_R = Y(6); r_R = Y(7); c_T = Y(8); c_E = Y(9); c_H = Y(10); c_R = Y(11); 
+    p_T = Y(12); p_E = Y(13); p_H = Y(14); p_R = Y(15); R_h = Y(16);
 
     %% Determine global translation rate (auxiliary variable)
     gamma = gamma_max*E_cell/(k_gamma+E_cell);
@@ -262,10 +267,9 @@ function dY = cell_wildtype_ODE(T,Y,P)
     %% Determine growth rate (auxiliary variable)
     lambda = gamma*(c_T+c_E+c_H+c_R)/M_proteome; % Supp. eqn 11
     
-    %% Determine rate of change for energy/growth variables
+    %% Determine rate of change for energy variables
     ds_i = v_T*p_T*s_e/(k_T+s_e) - v_E*p_E*s_i/(k_E+s_i) - lambda*s_i; % Supp. eqn 1
     dE_cell = phi_e*v_E*p_E*s_i/(k_E+s_i) - gamma*(c_T+c_E+c_H+c_R) - lambda*E_cell; % Supp. eqn 2, with simplification
-    dN_cell = lambda*N_cell;
     
     %% Determine rate of change for mRNA variables
     dm_T = w_T*E_cell/(E_cell+o_T) + gamma*c_T/n_T - b_T*R_h*m_T + u_T*c_T - (d_m+lambda)*m_T; % Supp. eqn 4, with simplification and sign change on last term
@@ -287,7 +291,7 @@ function dY = cell_wildtype_ODE(T,Y,P)
     dR_h = b_r*p_R*r_R - u_r*R_h  - (d_p+lambda)*R_h + gamma*c_T/n_T+gamma*c_E/n_E+gamma*c_H/n_H+gamma*c_R/n_R + u_T*c_T+u_E*c_E+u_R*c_R+u_H*c_H ...
             - (b_T*R_h*m_T+b_E*R_h*m_E+b_R*R_h*m_R+b_H*R_h*m_H); % Supp. eqn 10, with sign change on the sum to fix error
     
-    dY = [ds_i; dE_cell; dN_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h];
+    dY = [ds_i; dE_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h];
 
 end
 
@@ -307,10 +311,10 @@ function dY = cell_circuit_ODE(T,Y,P)
     b_Y=P(41);u_Y=P(42);n_Y=P(43);
     
     %% Unpack current variables from Y
-    s_i = Y(1); E_cell = Y(2); N_cell = Y(3); m_T = Y(4); m_E = Y(5); m_H = Y(6);
-    m_R = Y(7); r_R = Y(8); c_T = Y(9); c_E = Y(10); c_H = Y(11); c_R = Y(12); 
-    p_T = Y(13); p_E = Y(14); p_H = Y(15); p_R = Y(16); R_h = Y(17);m_Y = Y(18);
-    c_Y = Y(19);p_Y = Y(20);
+    s_i = Y(1); E_cell = Y(2); m_T = Y(3); m_E = Y(4); m_H = Y(5);
+    m_R = Y(6); r_R = Y(7); c_T = Y(8); c_E = Y(9); c_H = Y(10); c_R = Y(11); 
+    p_T = Y(12); p_E = Y(13); p_H = Y(14); p_R = Y(15); R_h = Y(16);m_Y = Y(17);
+    c_Y = Y(18);p_Y = Y(19);
 
     %% Determine global translation rate (auxiliary variable)
     gamma = gamma_max*E_cell/(k_gamma+E_cell);
@@ -318,10 +322,9 @@ function dY = cell_circuit_ODE(T,Y,P)
     %% Determine growth rate (auxiliary variable)
     lambda = gamma*(c_T+c_E+c_H+c_R+c_Y)/M_proteome; % Supp. eqn 11
     
-    %% Determine rate of change for energy/growth variables
+    %% Determine rate of change for energy variables
     ds_i = v_T*p_T*s_e/(k_T+s_e) - v_E*p_E*s_i/(k_E+s_i) - lambda*s_i; % Supp. eqn 1
     dE_cell = phi_e*v_E*p_E*s_i/(k_E+s_i) - gamma*(c_T+c_E+c_H+c_R+c_Y) - lambda*E_cell; % Supp. eqn 12, with simplification
-    dN_cell = lambda*N_cell;
     
     %% Determine rate of change for mRNA variables
     dm_T = w_T*E_cell/(E_cell+o_T) + gamma*c_T/n_T - b_T*R_h*m_T + u_T*c_T - (d_m+lambda)*m_T; % Supp. eqn 4, with simplification and sign change on last term
@@ -346,7 +349,7 @@ function dY = cell_circuit_ODE(T,Y,P)
     dR_h = b_r*p_R*r_R - u_r*R_h  - (d_p+lambda)*R_h + gamma*(c_T/n_T+c_E/n_E+c_H/n_H+c_R/n_R+c_Y/n_Y) + u_T*c_T+u_E*c_E+u_R*c_R+u_H*c_H+u_Y*c_Y ...
             - (b_T*R_h*m_T+b_E*R_h*m_E+b_R*R_h*m_R+b_H*R_h*m_H+b_Y*R_h*m_Y); % Supp. eqn 13, with sign change on the sum to fix error
     
-    dY = [ds_i; dE_cell; dN_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h;dm_Y;dc_Y;dp_Y];
+    dY = [ds_i; dE_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h;dm_Y;dc_Y;dp_Y];
 
 end
 
@@ -365,9 +368,9 @@ function dY = cell_oribo_ODE(T,Y,P)
     n_H=P(34);n_R=P(35);gamma_max=P(36);k_gamma=P(37);M_proteome=P(38);w_O=P(39);o_O=P(40);b_O=P(41);u_O=P(42);d_O=P(43);
     
     %% Unpack current variables from Y
-    s_i = Y(1); E_cell = Y(2); N_cell = Y(3); m_T = Y(4); m_E = Y(5); m_H = Y(6);
-    m_R = Y(7); r_R = Y(8); c_T = Y(9); c_E = Y(10); c_H = Y(11); c_R = Y(12); 
-    p_T = Y(13); p_E = Y(14); p_H = Y(15); p_R = Y(16); R_h = Y(17);r_O = Y(18); R_O = Y(19);
+    s_i = Y(1); E_cell = Y(2); m_T = Y(3); m_E = Y(4); m_H = Y(5);
+    m_R = Y(6); r_R = Y(7); c_T = Y(8); c_E = Y(9); c_H = Y(10); c_R = Y(11); 
+    p_T = Y(12); p_E = Y(13); p_H = Y(14); p_R = Y(15); R_h = Y(16);r_O = Y(17); R_O = Y(18);
 
     %% Determine global translation rate (auxiliary variable)
     gamma = gamma_max*E_cell/(k_gamma+E_cell);
@@ -375,10 +378,9 @@ function dY = cell_oribo_ODE(T,Y,P)
     %% Determine growth rate (auxiliary variable)
     lambda = gamma*(c_T+c_E+c_H+c_R)/M_proteome; % Supp. eqn 11
     
-    %% Determine rate of change for energy/growth variables
+    %% Determine rate of change for energy variables
     ds_i = v_T*p_T*s_e/(k_T+s_e) - v_E*p_E*s_i/(k_E+s_i) - lambda*s_i; % Supp. eqn 1
     dE_cell = phi_e*v_E*p_E*s_i/(k_E+s_i) - gamma*(c_T+c_E+c_H+c_R) - lambda*E_cell; % Supp. eqn 2, with simplification
-    dN_cell = lambda*N_cell;
     
     %% Determine rate of change for mRNA variables
     dm_T = w_T*E_cell/(E_cell+o_T) + gamma*c_T/n_T - b_T*R_h*m_T + u_T*c_T - (d_m+lambda)*m_T; % Supp. eqn 4, with simplification and sign change on last term
@@ -402,7 +404,7 @@ function dY = cell_oribo_ODE(T,Y,P)
     dR_h = b_r*p_R*r_R - u_r*R_h  - (d_p+lambda)*R_h + gamma*c_T/n_T+gamma*c_E/n_E+gamma*c_H/n_H+gamma*c_R/n_R + u_T*c_T+u_E*c_E+u_R*c_R+u_H*c_H ...
             - (b_T*R_h*m_T+b_E*R_h*m_E+b_R*R_h*m_R+b_H*R_h*m_H); % Supp. eqn 10, with sign change on the sum to fix error
     
-    dY = [ds_i; dE_cell; dN_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h; dr_O; dR_O];
+    dY = [ds_i; dE_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h; dr_O; dR_O];
 
 end
 
@@ -423,10 +425,10 @@ function dY = cell_both_inactive_ODE(T,Y,P)
     b_Y=P(41);u_Y=P(42);n_Y=P(43);w_O=P(44);o_O=P(45);b_O=P(46);u_O=P(47);d_O=P(48);
     
     %% Unpack current variables from Y
-    s_i = Y(1); E_cell = Y(2); N_cell = Y(3); m_T = Y(4); m_E = Y(5); m_H = Y(6);
-    m_R = Y(7); r_R = Y(8); c_T = Y(9); c_E = Y(10); c_H = Y(11); c_R = Y(12); 
-    p_T = Y(13); p_E = Y(14); p_H = Y(15); p_R = Y(16); R_h = Y(17);m_Y = Y(18);
-    c_Y = Y(19);p_Y = Y(20);r_O = Y(21); R_O = Y(22);
+    s_i = Y(1); E_cell = Y(2); m_T = Y(3); m_E = Y(4); m_H = Y(5);
+    m_R = Y(6); r_R = Y(7); c_T = Y(8); c_E = Y(9); c_H = Y(10); c_R = Y(11); 
+    p_T = Y(12); p_E = Y(13); p_H = Y(14); p_R = Y(15); R_h = Y(16);m_Y = Y(17);
+    c_Y = Y(18);p_Y = Y(19);r_O = Y(20); R_O = Y(21);
 
     %% Determine global translation rate (auxiliary variable)
     gamma = gamma_max*E_cell/(k_gamma+E_cell);
@@ -434,10 +436,9 @@ function dY = cell_both_inactive_ODE(T,Y,P)
     %% Determine growth rate (auxiliary variable)
     lambda = gamma*(c_T+c_E+c_H+c_R+c_Y)/M_proteome; % Supp. eqn 11
     
-    %% Determine rate of change for energy/growth variables
+    %% Determine rate of change for energy variables
     ds_i = v_T*p_T*s_e/(k_T+s_e) - v_E*p_E*s_i/(k_E+s_i) - lambda*s_i; % Supp. eqn 1
     dE_cell = phi_e*v_E*p_E*s_i/(k_E+s_i) - gamma*(c_T+c_E+c_H+c_R+c_Y) - lambda*E_cell; % Supp. eqn 12, with simplification
-    dN_cell = lambda*N_cell;
     
     %% Determine rate of change for mRNA variables
     dm_T = w_T*E_cell/(E_cell+o_T) + gamma*c_T/n_T - b_T*R_h*m_T + u_T*c_T - (d_m+lambda)*m_T; % Supp. eqn 4, with simplification and sign change on last term
@@ -464,7 +465,7 @@ function dY = cell_both_inactive_ODE(T,Y,P)
     dR_h = b_r*p_R*r_R - u_r*R_h  - (d_p+lambda)*R_h + gamma*(c_T/n_T+c_E/n_E+c_H/n_H+c_R/n_R+c_Y/n_Y) + u_T*c_T+u_E*c_E+u_R*c_R+u_H*c_H+u_Y*c_Y ...
             - (b_T*R_h*m_T+b_E*R_h*m_E+b_R*R_h*m_R+b_H*R_h*m_H+b_Y*R_h*m_Y); % Supp. eqn 13, with sign change on the sum to fix error
     
-    dY = [ds_i; dE_cell; dN_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h;dm_Y;dc_Y;dp_Y;dr_O;dR_O];
+    dY = [ds_i; dE_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h;dm_Y;dc_Y;dp_Y;dr_O;dR_O];
 
 end
 
@@ -484,10 +485,10 @@ function dY = cell_both_active_ODE(T,Y,P)
     b_Y=P(41);u_Y=P(42);n_Y=P(43);w_O=P(44);o_O=P(45);b_O=P(46);u_O=P(47);d_O=P(48);
     
     %% Unpack current variables from Y
-    s_i = Y(1); E_cell = Y(2); N_cell = Y(3); m_T = Y(4); m_E = Y(5); m_H = Y(6);
-    m_R = Y(7); r_R = Y(8); c_T = Y(9); c_E = Y(10); c_H = Y(11); c_R = Y(12); 
-    p_T = Y(13); p_E = Y(14); p_H = Y(15); p_R = Y(16); R_h = Y(17);m_Y = Y(18);
-    c_Y = Y(19);p_Y = Y(20);r_O = Y(21); R_O = Y(22);
+    s_i = Y(1); E_cell = Y(2); m_T = Y(3); m_E = Y(4); m_H = Y(5);
+    m_R = Y(6); r_R = Y(7); c_T = Y(8); c_E = Y(9); c_H = Y(10); c_R = Y(11); 
+    p_T = Y(12); p_E = Y(13); p_H = Y(14); p_R = Y(15); R_h = Y(16);m_Y = Y(17);
+    c_Y = Y(18);p_Y = Y(19);r_O = Y(20); R_O = Y(21);
 
     %% Determine global translation rate (auxiliary variable)
     gamma = gamma_max*E_cell/(k_gamma+E_cell);
@@ -498,7 +499,6 @@ function dY = cell_both_active_ODE(T,Y,P)
     %% Determine rate of change for energy/growth variables
     ds_i = v_T*p_T*s_e/(k_T+s_e) - v_E*p_E*s_i/(k_E+s_i) - lambda*s_i; % Supp. eqn 1
     dE_cell = phi_e*v_E*p_E*s_i/(k_E+s_i) - gamma*(c_T+c_E+c_H+c_R+c_Y) - lambda*E_cell; % Supp. eqn 12, with simplification
-    dN_cell = lambda*N_cell;
     
     %% Determine rate of change for mRNA variables
     dm_T = w_T*E_cell/(E_cell+o_T) + gamma*c_T/n_T - b_T*R_h*m_T + u_T*c_T - (d_m+lambda)*m_T; % Supp. eqn 4, with simplification and sign change on last term
@@ -526,7 +526,7 @@ function dY = cell_both_active_ODE(T,Y,P)
     dR_h = b_r*p_R*r_R - u_r*R_h  - (d_p+lambda)*R_h + gamma*(c_T/n_T+c_E/n_E+c_H/n_H+c_R/n_R) + u_T*c_T+u_E*c_E+u_R*c_R+u_H*c_H ...
             - (b_T*R_h*m_T+b_E*R_h*m_E+b_R*R_h*m_R+b_H*R_h*m_H); % Supp. eqn 10, with sign change on the sum to fix error
     
-    dY = [ds_i; dE_cell; dN_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h;dm_Y;dc_Y;dp_Y;dr_O;dR_O];
+    dY = [ds_i; dE_cell; dm_T; dm_E; dm_H; dm_R; dr_R; dc_T; dc_E; dc_H; dc_R; dp_T; dp_E; dp_H; dp_R; dR_h;dm_Y;dc_Y;dp_Y;dr_O;dR_O];
 
 end
 
@@ -539,14 +539,10 @@ function Yf = runToSteadyState()
     time = 2000; % move forward by this many minutes each round of the while loop
     odeoptions = odeset('NonNegative',[1:length(Y)]);
     [T,Y] = ode15s(@(T,Y) cell_wildtype_ODE(T,Y,P), [0 time], Y, odeoptions); % initial run
-    test = 1;
-    while test > 0
-        dY = cell_wildtype_ODE(T,Y,P);
-        if dY(2) < threshold % if dE_cell/dt is smaller than threshold, move forward "time" minutes again and we are done.
-            [T,Y] = ode15s(@(T,Y) cell_wildtype_ODE(T,Y,P), [0 time], Y(length(Y),:), odeoptions);
-            test = 0;
-        end
-        [T,Y] = ode15s(@(T,Y) cell_wildtype_ODE(T,Y,P), [0 time], Y(length(Y),:), odeoptions); % otherwise, simulate another "time" minutes
+    dY = cell_wildtype_ODE(T,Y(end,:),P); % Find derivative
+    while abs(dY(2)) > 0.1 % if not at steady state yet (dE_cell/dt too large)
+        [T,Y] = ode15s(@(T,Y) cell_wildtype_ODE(T,Y,P), [0 time], Y(end,:), odeoptions);
+        dY = cell_wildtype_ODE(T,Y(end,:),P);
     end
     Yf = Y(end,:); % Return final values of variables after steady-state reached
 end
@@ -583,10 +579,10 @@ function Yf = varyParameters(type, par_num, Ps)
     % par_num (see Key to the parameters)
     % Parameter values are specificed in the array Ps
     % type indicates the type of ODE to simulate ("plain"/"circuit"/"oribo"/"both inactive"/"both active")
+    time = 4000; % time to simulate in minutes each time we try to get to steady state
     for i = 1:length(Ps) % Run for each value in the array Ps
         [P,Y] = initialize(type); % Initialize variables/parameters
         P(par_num) = Ps(i); % Adjust parameter according to Ps
-        Y0 = runToSteadyState(); % Get to steady-state (unaffected by change in P)
         switch type % Determine correct ODE
             case "circuit"
                 ODE = @cell_circuit_ODE;
@@ -599,11 +595,14 @@ function Yf = varyParameters(type, par_num, Ps)
             otherwise
                 ODE = @cell_wildtype_ODE;
         end
-        for k = [length(Y0)+1:length(Y)]  % Add any remaining initial variables required for the ODE to Yf
-            Y0 = [Y0 Y(k)];
-        end
+        Y0 = Y;
         odeoptions = odeset('NonNegative',[1:length(Y0)]);
-        [T,Y] = ode15s(@(T,Y) ODE(T,Y,P), [0 2000], Y0, odeoptions); % Run the correct ODE
+        [T,Y] = ode15s(@(T,Y) ODE(T,Y,P), [0 time], Y0, odeoptions); % Run the correct ODE
+        dY = ODE(T,Y(end,:),P); % Find derivative
+        while max(abs(dY)) > 0.1 % if not at steady state yet (dE_cell/dt too large)
+            [T,Y] = ode15s(@(T,Y) ODE(T,Y,P), [0 time], Y(end,:), odeoptions);
+            dY = ODE(T,Y(end,:),P);
+        end
         Yf(i,:) = Y(end,:); % Append final values to Yf
     end
 end
