@@ -1,7 +1,7 @@
 %% cell_modeling.m
 % Author: Aadith Vittala
 % Rewriting code from Darlington et al., Nat. Comm. 2018
-% Simulate metabolic, translational, transcriptional, and orthogonal ribosomal processes 
+% Simulate metabolic, translational, and orthogonal ribosomal processes 
 
 %% Key to the variables:
 % Access as Y(:, #), where # is the number
@@ -46,14 +46,6 @@
 % "both active" for both but with o-ribosomes translating the circuit genes
 
 
-%% Quick run how-to:
-% To just run the ODE, do the following and replace "..." with the ODE you want to simulate:
-% [T,Y] = runAfterSteadyState("...", 100)
-% Note here that:
-% T is an array representing time; in this case it runs from 0 to 100
-% Y represents your variables
-
-
 clear all; close all; %Clear the screen
 
 %% Parameter variation
@@ -61,20 +53,19 @@ fplot = figure;
 figure(fplot.Number); hold('on');
 %set(gca, 'XScale', 'log')
 %set(gca, 'YScale', 'log')
-Ps = linspace(0,1000,60);
+Ps = linspace(400,2000,60);
 ylim([0 inf]);
-Yf = varyParameters("both inactive",3,Ps);
-[P,Y] = initialize("both inactive");
-Yc = Yf(:,19); % calculated values to plot
+Yf = varyParameters("both inactive",10,Ps); %P(10) -> max ribosomal protein transcription
+Yc = Yf(:,19); % values to plot: Yf(:,19) -> circuit proteins produced
 plot(Ps,Yc,'-', 'MarkerIndices', 1)
 
-Yf = varyParameters("both active",3,Ps);
-[P,Y] = initialize("both active");
-Yc = Yf(:,19); % calculated values to plot
+Yf = varyParameters("both active",10,Ps);
+Yc = Yf(:,19); % values to plot
 plot(Ps,Yc,'-', 'MarkerIndices', 1)
-xlabel('Max nutrient import rate')
+xlabel('Ribosomal protein transcription')
 ylabel('Circuit protein production')
 legend('Using host ribosomes', 'Using o-ribosomes')
+
 
 function [P,Y] = initialize(type)
     %% initialize(type):
@@ -606,3 +597,4 @@ function Yf = varyParameters(type, par_num, Ps)
         Yf(i,:) = Y(end,:); % Append final values to Yf
     end
 end
+
