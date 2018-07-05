@@ -46,25 +46,17 @@
 % "both active" for both but with o-ribosomes translating the circuit genes
 
 
+%% Quick run how-to:
+% To just run the ODE, do the following and replace "..." with the ODE you want to simulate:
+% [T,Y] = runAfterSteadyState("...", 100)
+% Note here that:
+% T is an array representing time; in this case it runs from 0 to 100
+% Y represents your variables
+
+
 clear all; close all; %Clear the screen
 
-%% Parameter variation
-fplot = figure;
-figure(fplot.Number); hold('on');
-%set(gca, 'XScale', 'log')
-%set(gca, 'YScale', 'log')
-Ps = linspace(400,2000,60);
-ylim([0 inf]);
-Yf = varyParameters("both inactive",10,Ps); %P(10) -> max ribosomal protein transcription
-Yc = Yf(:,19); % values to plot: Yf(:,19) -> circuit proteins produced
-plot(Ps,Yc,'-', 'MarkerIndices', 1)
-
-Yf = varyParameters("both active",10,Ps);
-Yc = Yf(:,19); % values to plot
-plot(Ps,Yc,'-', 'MarkerIndices', 1)
-xlabel('Ribosomal protein transcription')
-ylabel('Circuit protein production')
-legend('Using host ribosomes', 'Using o-ribosomes')
+% Helpful equation for growth rate: P(36)*Yf(:,2)./(Yf(:,2)+P(37)).*(Yf(:,8)+Yf(:,9)+Yf(:,10)+Yf(:,11)+Yf(:,18))/P(38);
 
 
 function [P,Y] = initialize(type)
@@ -573,7 +565,9 @@ function Yf = varyParameters(type, par_num, Ps)
     time = 4000; % time to simulate in minutes each time we try to get to steady state
     for i = 1:length(Ps) % Run for each value in the array Ps
         [P,Y] = initialize(type); % Initialize variables/parameters
-        P(par_num) = Ps(i); % Adjust parameter according to Ps
+        try
+            P(par_num) = Ps(i); % Adjust parameter according to Ps
+        end
         switch type % Determine correct ODE
             case "circuit"
                 ODE = @cell_circuit_ODE;
